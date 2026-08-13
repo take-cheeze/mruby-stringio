@@ -12,6 +12,14 @@ original is https://github.com/ruby/ruby/blob/trunk/ext/stringio/stringio.c
 #include "mruby/class.h"
 #include "mruby/object.h"
 
+/* mrb_str_byte_subseq() builds a substring that shares the source string's
+   buffer (copy-on-write) instead of copying it, used below by
+   strio_substr() to avoid an extra memcpy on every read()/gets(). It has
+   been part of mruby since 2.1.0 but was only exposed through the public
+   mruby/internal.h starting with mruby 3.2, so declare it here for
+   compatibility with the older mruby versions this gem still supports. */
+mrb_value mrb_str_byte_subseq(mrb_state *mrb, mrb_value str, mrb_int beg, mrb_int len);
+
 #if MRUBY_RELEASE_NO >= 30000
 #include "mruby/presym.h"
 #else
@@ -173,7 +181,9 @@ strio_substr(mrb_state *mrb, mrb_value self, long pos, long len)
   if (len > rlen) len = rlen;
   if (len < 0) len = 0;
   if (len == 0) return mrb_str_new(mrb, 0, 0);
-  return mrb_str_new(mrb, RSTRING_PTR(str)+pos, len);
+  /* mrb_str_byte_subseq shares the underlying buffer (copy-on-write)
+     instead of memcpy-ing it, unless len is small enough to embed. */
+  return mrb_str_byte_subseq(mrb, str, pos, len);
 }
 
 static void
