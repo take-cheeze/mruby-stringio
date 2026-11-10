@@ -12,6 +12,7 @@ original is https://github.com/ruby/ruby/blob/trunk/ext/stringio/stringio.c
 #include "mruby/class.h"
 #include "mruby/object.h"
 #include "mruby/proc.h"
+#include "mruby/internal.h"
 
 /* mrb_str_byte_subseq() builds a substring that shares the source string's
    buffer (copy-on-write) instead of copying it, used below by
@@ -546,6 +547,17 @@ stringio_getbyte(mrb_state *mrb, mrb_value self)
   return mrb_int_value(mrb, (mrb_int)byte);
 }
 
+/* StringIO#getbyte without a VM frame (stringio_getbyte reads none) when method lookup still resolves to that body.
+ * Returns FALSE for a receiver that is not a StringIO or whose `getbyte` is something else; the caller then sends. */
+mrb_bool
+mrb_stringio_getbyte_direct(mrb_state *mrb, mrb_value self, mrb_value *result)
+{
+  if (!mrb_data_p(self) || DATA_TYPE(self) != &mrb_stringio_type) return FALSE;
+  if (mrb_method_memo(mrb, self, MRB_SYM(getbyte), MRB_MEMO_STRIO_GETBYTE)->f != stringio_getbyte) return FALSE;
+  *result = stringio_getbyte(mrb, self);
+  return TRUE;
+}
+
 static mrb_value
 stringio_gets(mrb_state *mrb, mrb_value self)
 {
@@ -696,6 +708,16 @@ stringio_eof_p(mrb_state *mrb, mrb_value self)
   mrb_value string = stringio_iv_get(string);
   struct StringIO *ptr = StringIO(self);
   return (RSTRING_LEN(string) <= ptr->pos) ? mrb_true_value() : mrb_false_value();
+}
+
+/* StringIO#eof? without a VM frame, as mrb_stringio_getbyte_direct. */
+mrb_bool
+mrb_stringio_eof_direct(mrb_state *mrb, mrb_value self, mrb_value *result)
+{
+  if (!mrb_data_p(self) || DATA_TYPE(self) != &mrb_stringio_type) return FALSE;
+  if (mrb_method_memo(mrb, self, MRB_SYM_Q(eof), MRB_MEMO_STRIO_EOF)->f != stringio_eof_p) return FALSE;
+  *result = stringio_eof_p(mrb, self);
+  return TRUE;
 }
 
 static mrb_value
