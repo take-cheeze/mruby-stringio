@@ -455,12 +455,8 @@ stringio_read(mrb_state *mrb, mrb_value self)
 mrb_bool
 mrb_stringio_read_direct(mrb_state *mrb, mrb_value self, mrb_value len, mrb_value *result)
 {
-  struct RClass *c = mrb_obj_class(mrb, self);
-  mrb_method_t method = mrb_method_search_vm(mrb, &c, MRB_SYM(read));
-  if (MRB_METHOD_UNDEF_P(method) || !MRB_METHOD_CFUNC_P(method) ||
-      MRB_METHOD_CFUNC(method) != stringio_read) {
-    return FALSE;
-  }
+  if (!mrb_data_p(self) || DATA_TYPE(self) != &mrb_stringio_type) return FALSE;
+  if (mrb_method_memo(mrb, self, MRB_SYM(read), MRB_MEMO_STRIO_READ)->f != stringio_read) return FALSE;
   stringio_check_readable(mrb, self);
   *result = stringio_read_impl(mrb, self, 1, len, mrb_nil_value());
   return TRUE;
