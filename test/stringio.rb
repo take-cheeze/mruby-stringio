@@ -416,3 +416,16 @@ assert 'StringIO#ungetc' do
   s = StringIO.new("").freeze
   assert_raise(FrozenError) {s.ungetc("x")}
 end
+
+assert 'aliases of C methods' do
+  io = StringIO.new
+  assert_equal 3, io.syswrite("abc")
+  assert_equal 3, io.length
+  assert_equal 3, io.tell
+  assert_equal io.pos, io.tell
+end
+
+assert 'initialize is private' do
+  assert_raise(NoMethodError) { StringIO.new.initialize("x") }
+  assert_raise(NoMethodError) { StringIO.new.initialize_copy(StringIO.new) }
+end

@@ -23,8 +23,6 @@ class StringIO
 
   attr_accessor :string
 
-  alias_method :tell, :pos
-
   def print(*strings)
     strings.each do |string|
       str = string.to_s
