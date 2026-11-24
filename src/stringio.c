@@ -696,16 +696,52 @@ stringio_reopen(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+#ifdef MRB_MT_ENTRY
+/* A ROM method table (take-cheeze/mruby's mrb_mt_init_rom) takes no heap per method. An alias of a C method is a copy
+   of its entry; initialize and initialize_copy are private, as mrb_define_method makes them. */
+#include "mruby/presym.h"
+#define MRB_MT_CLASS StringIO
+static const mrb_mt_entry stringio_rom_entries[] = {
+  MRB_MT_ENTRY(stringio_initialize,      MRB_SYM(initialize),      MRB_ARGS_ANY() | MRB_MT_PRIVATE)
+  MRB_MT_ENTRY(stringio_initialize_copy, MRB_SYM(initialize_copy), MRB_ARGS_ANY() | MRB_MT_PRIVATE)
+  MRB_MT_ENTRY(stringio_get_lineno,      MRB_SYM(lineno),          MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_set_lineno,      MRB_SYM_E(lineno),        MRB_ARGS_REQ(1))
+  MRB_MT_ENTRY(stringio_get_pos,         MRB_SYM(pos),             MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_get_pos,         MRB_SYM(tell),            MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_set_pos,         MRB_SYM_E(pos),           MRB_ARGS_REQ(1))
+  MRB_MT_ENTRY(stringio_rewind,          MRB_SYM(rewind),          MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_closed_p,        MRB_SYM_Q(closed),        MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_close,           MRB_SYM(close),           MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_read,            MRB_SYM(read),            MRB_ARGS_ANY())
+  MRB_MT_ENTRY(stringio_write,           MRB_SYM(write),           MRB_ARGS_REQ(1))
+  MRB_MT_ENTRY(stringio_write,           MRB_SYM(syswrite),        MRB_ARGS_REQ(1))
+  MRB_MT_ENTRY(stringio_getc,            MRB_SYM(getc),            MRB_ARGS_ANY())
+  MRB_MT_ENTRY(stringio_getbyte,         MRB_SYM(getbyte),         MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_gets,            MRB_SYM(gets),            MRB_ARGS_ANY())
+  MRB_MT_ENTRY(stringio_seek,            MRB_SYM(seek),            MRB_ARGS_ANY())
+  MRB_MT_ENTRY(stringio_size,            MRB_SYM(size),            MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_size,            MRB_SYM(length),          MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_eof_p,           MRB_SYM_Q(eof),           MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_eof_p,           MRB_SYM(eof),             MRB_ARGS_NONE())
+  MRB_MT_ENTRY(stringio_reopen,          MRB_SYM(reopen),          MRB_ARGS_ANY())
+};
+#undef MRB_MT_CLASS
+#endif
+
 void
 mrb_mruby_stringio_gem_init(mrb_state* mrb)
 {
   struct RClass *stringio = mrb_define_class(mrb, "StringIO", mrb->object_class);
   MRB_SET_INSTANCE_TT(stringio, MRB_TT_DATA);
+#ifdef MRB_MT_ENTRY
+  MRB_MT_INIT_ROM(mrb, stringio, stringio_rom_entries);
+#else
   mrb_define_method(mrb, stringio, "initialize", stringio_initialize, MRB_ARGS_ANY());
   mrb_define_method(mrb, stringio, "initialize_copy", stringio_initialize_copy, MRB_ARGS_ANY());
   mrb_define_method(mrb, stringio, "lineno", stringio_get_lineno, MRB_ARGS_NONE());
   mrb_define_method(mrb, stringio, "lineno=", stringio_set_lineno, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, stringio, "pos", stringio_get_pos, MRB_ARGS_NONE());
+  mrb_define_alias(mrb, stringio, "tell", "pos");
   mrb_define_method(mrb, stringio, "pos=", stringio_set_pos, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, stringio, "rewind", stringio_rewind, MRB_ARGS_NONE());
   mrb_define_method(mrb, stringio, "closed?", stringio_closed_p, MRB_ARGS_NONE());
@@ -722,6 +758,7 @@ mrb_mruby_stringio_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, stringio, "eof?", stringio_eof_p, MRB_ARGS_NONE());
   mrb_define_alias(mrb, stringio, "eof", "eof?");
   mrb_define_method(mrb, stringio, "reopen", stringio_reopen, MRB_ARGS_ANY());
+#endif
 
   struct RClass *io = mrb_define_class(mrb, "IO", mrb->object_class);
   /* Set I/O position from the beginning */
